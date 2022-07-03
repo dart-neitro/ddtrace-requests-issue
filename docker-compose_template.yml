@@ -1,0 +1,72 @@
+version: "3.9"
+services:
+  sender:
+    build: sender
+    environment:
+      - REQUEST_DELAY=3
+      - target_endpoint1=http://service1:5000/endpoint1
+      - target_endpoint2=http://service2:5000/endpoint2
+      - WAIT_HOSTS=datadog-agent:8126,service1:5000,service2:5000
+    depends_on:
+      - service1
+      - service2
+      - datadog-agent
+    labels:
+      com.datadoghq.ad.logs: '[{"source": "ddtraceRequestsIssue", "service": "sender"}]'
+      com.datadoghq.tags.service: "sender"
+      com.datadoghq.tags.version: "1.0.0"
+  service1:
+    build: service1
+    ports:
+      - "5010:5000"
+    volumes:
+      - ./service1:/app
+    labels:
+      com.datadoghq.ad.logs: '[{"source": "ddtraceRequestsIssue", "service": "service1"}]'
+      com.datadoghq.tags.service: "service1"
+    environment:
+      - DD_AGENT_HOST=datadog-agent
+      - target_endpoint=http://service2:8000/endpoint2
+      - REQUEST_DELAY=2
+      - SERVICE_NAME=service1
+#      - DD_REQUESTS_SERVICE_NAME=service1
+      - DD_SERVICE=service1
+      - DD_LOGS_INJECTION=true
+      - WAIT_HOSTS=datadog-agent:8126
+  service2:
+    build: service2
+    ports:
+      - "5011:5000"
+    volumes:
+      - ./service2:/app
+    labels:
+      com.datadoghq.ad.logs: '[{"source": "ddtraceRequestsIssue", "service": "service2"}]'
+      com.datadoghq.tags.service: "service2"
+    environment:
+      - DD_AGENT_HOST=datadog-agent
+      - REQUEST_DELAY=5
+      - SERVICE_NAME=service2
+      - DD_SERVICE=service2
+      - DD_LOGS_INJECTION=true
+      - WAIT_HOSTS=datadog-agent:8126
+
+  datadog-agent:
+    container_name: dd-agent
+    image: datadog/agent
+    environment:
+      - DD_API_KEY=%DD_API_KEY%
+      - DD_SITE=%DD_SITE%
+      - DD_LOGS_ENABLED=true
+      - DD_CONTAINER_INCLUDE=.*
+      - DD_CONTAINER_INCLUDE_LOGS=.*
+      - DD_HEALTH_PORT=5555
+      - DD_APM_ENABLED=true
+      - DD_APM_NON_LOCAL_TRAFFIC=true
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /proc/:/host/proc/:ro
+      - /sys/fs/cgroup:/host/sys/fs/cgroup:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+    ports:
+      - "5555:5555"  # health check
+      - "8126:8126"  # ddtrace agent port

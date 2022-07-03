@@ -1,0 +1,7 @@
+# base
+flask
+httpx
+json_log_formatter
+
+# dd-trace
+ddtrace

@@ -1,0 +1,6 @@
+# base
+flask
+requests
+
+# dd-trace
+ddtrace
